@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN"
+    "http://www.springframework.org/dtd/spring-beans.dtd">
+<beans default-autowire="byName">
+	<bean id="propertyConfigurer"
+		class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations">
+			<list>
+				<value>classpath*:application.properties</value>
+			</list>
+		</property>
+	</bean>
+    
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <property name="driverClassName" value="${jdbc.driverClassName}" />
+		<property name="url" value="${jdbc.url}" />
+		<property name="username" value="${jdbc.username}" />
+		<property name="password" value="${jdbc.password}" />
+		<property name="validationQuery" value="select sysdate from dual"/>
+		<property name="maxActive">
+			<value>20</value>
+		</property>
+		<property name="maxIdle">
+			<value>3</value>
+		</property>
+		<property name="maxWait">
+			<value>10000</value>
+		</property>
+    </bean>
+    
+    <bean id="dataSourceNew" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <property name="driverClassName" value="${jdbc.driverClassName}" />
+		<property name="url" value="${jdbc.new.url}" />
+		<property name="username" value="${jdbc.new.username}" />
+		<property name="password" value="${jdbc.new.password}" />
+		<property name="validationQuery" value="select sysdate from dual"/>
+		<property name="maxActive">
+			<value>20</value>
+		</property>
+		<property name="maxIdle">
+			<value>3</value>
+		</property>
+		<property name="maxWait">
+			<value>10000</value>
+		</property>
+    </bean>
+
+   	<bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate" >
+   		<property name="dataSource"><ref local="dataSource"/></property>
+   	</bean>
+   	
+   	<bean id="jdbcTemplateNew" class="org.springframework.jdbc.core.JdbcTemplate" >
+   		<property name="dataSource"><ref local="dataSourceNew"/></property>
+   	</bean>
+   	
+   	<!-- 事务处理器，继承自PlatformTransactionManager接口 -->
+   	<bean id="transactionManager"  
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager"/>
+		
+	<!-- 拦截器用于事务处理 -->
+	<bean id="transactionInterceptor" class="org.springframework.transaction.interceptor.TransactionInterceptor">
+		<property name="transactionManager" ref="transactionManager"></property>
+		<!-- 配置文件配置 -->
+		<!-- <property name="transactionAttributes">
+			<props>
+				事务传播级别
+					   PROPAGATION_REQUIRES_NEW 启动一个新的, 不依赖于环境的 "内部" 事务. 
+					这个事务将被完全 commited 或 rolled back 而不依赖于外部事务, 它拥有自己的隔离范围, 自己的锁, 等等. 
+					当内部事务开始执行时, 外部事务将被挂起, 内务事务结束时, 外部事务将继续执行. 
+   					    另一方面, PROPAGATION_NESTED 开始一个 "嵌套的" 事务,  它是已经存在事务的一个真正的子事务. 
+   					嵌套事务开始执行时,  它将取得一个 savepoint. 如果这个嵌套事务失败, 我们将回滚到此 savepoint. 
+   					嵌套事务是外部事务的一部分, 只有外部事务结束后它才会被提交. 
+    				    由此可见, PROPAGATION_REQUIRES_NEW 和 PROPAGATION_NESTED 的最大区别在于, 
+    				PROPAGATION_REQUIRES_NEW 完全是一个新的事务, 而 PROPAGATION_NESTED 则是外部事务的子事务, 
+    				如果外部事务 commit, 潜套事务也会被 commit, 这个规则同样适用于 roll back.  
+				<prop key="*">PROPAGATION_NESTED</prop>
+			</props>
+		</property>  -->
+		<!-- 标记配置 -->
+		<property name="transactionAttributeSource">
+			<bean class="org.springframework.transaction.annotation.AnnotationTransactionAttributeSource"></bean>
+		</property>
+	</bean>
+	
+	<!-- 自动为bean添加代理，并使用事务拦截器 -->
+	<bean class="org.springframework.aop.framework.autoproxy.BeanNameAutoProxyCreator">
+		<property name="beanNames">
+			<value>*action</value>
+		</property>
+		<property name="interceptorNames">
+			<list>
+				<value>transactionInterceptor</value>
+			</list>
+		</property>
+	</bean>
+	
+	<bean id="dirtyRead" class="finley.spring.transaction.scenario.DirtyReadScenario">
+		<property name="template"><ref local="jdbcTemplate"/></property>
+		<property name="transactionManager"><ref local="transactionManager"/></property>
+	</bean>
+	
+	<bean id="overwrite" class="finley.spring.transaction.scenario.OverwriteScenario">
+		<property name="template"><ref local="jdbcTemplate"/></property>
+		<property name="transactionManager"><ref local="transactionManager"/></property>
+	</bean>
+	
+	<bean id="unrepeatable" class="finley.spring.transaction.scenario.UnrepeatableScenario">
+		<property name="template"><ref local="jdbcTemplate"/></property>
+		<property name="transactionManager"><ref local="transactionManager"/></property>
+	</bean>
+	
+	<bean id="imageread" class="finley.spring.transaction.scenario.ImageReadScenario">
+		<property name="template"><ref local="jdbcTemplate"/></property>
+		<property name="transactionManager"><ref local="transactionManager"/></property>
+	</bean>
+	
+	<bean id="transactionScenario" class="finley.spring.transaction.scenario.TransactionScenario">
+		<property name="template"><ref local="jdbcTemplate"/></property>
+		<property name="transactionManager"><ref local="transactionManager"/></property>
+	</bean>
+	
+	<bean id="transaction" class="finley.spring.transaction.TransactionImpl">
+		<property name="template"><ref local="jdbcTemplate"/></property>
+		<property name="subTransaction"><ref local="subTransaction"/></property>
+	</bean>
+	
+	<bean id="subTransaction" class="finley.spring.transaction.SubTransactionImpl">
+		<property name="template"><ref local="jdbcTemplateNew"/></property>
+	</bean>
+</beans>
