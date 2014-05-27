@@ -2,6 +2,8 @@ package finley.spring.transaction;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import finley.spring.transaction.util.SpringConstants;
+
 public class SubTransactionImpl implements ITransaction {
 
 	protected  JdbcTemplate template;
@@ -17,8 +19,8 @@ public class SubTransactionImpl implements ITransaction {
 	@Override
 	public void doTransaction() {
 		// TODO Auto-generated method stub
-		template.update("update CLASS_STATISTIC t set t.score = 70 where t.sid = 2");
-//		throw new RuntimeException();
+		template.update("update CLASS_STATISTIC t set t.score = " + SpringConstants.VALUE + " where t.sid = 2");
+		throw new RuntimeException();
 	}
 
 }
